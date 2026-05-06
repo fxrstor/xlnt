@@ -98,17 +98,6 @@ bool parse_port(const std::string &s, std::size_t &port)
     return true;
 }
 
-std::string bracket_ipv6_if_needed(const std::string &host)
-{
-    if (host.find(':') != std::string::npos &&
-        !(host.size() >= 2 && host.front() == '[' && host.back() == ']'))
-    {
-        return "[" + host + "]";
-    }
-
-    return host;
-}
-
 struct parsed_authority
 {
     bool present = false;
