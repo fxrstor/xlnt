@@ -57,6 +57,7 @@ public:
         register_test(test_make_absolute_relative_passthrough);
         register_test(test_parse_invalid_port_empty);
         register_test(test_parse_invalid_port_nondigit);
+        register_test(test_uri_edge_coverage);
     }
 
     void test_default_ctor()
@@ -439,6 +440,31 @@ public:
         xlnt_assert(!u.has_port());
         xlnt_assert_equals(u.host(), "example.com:abc");
         xlnt_assert_equals(u.to_string(), "http://example.com:abc/path");
+    }
+
+    void test_uri_edge_coverage()
+    {
+        xlnt_assert(!xlnt::uri("http://example.com:999999999999999999999999/path").has_port());
+
+        xlnt::uri bad_ipv6("http://[::1/path");
+        xlnt_assert(bad_ipv6.has_authority());
+
+        xlnt::uri base_empty("");
+
+        xlnt_assert_equals(xlnt::uri("/./g").make_absolute(base_empty).to_string(), "/g");
+        xlnt_assert_equals(xlnt::uri("/.").make_absolute(base_empty).to_string(), "/");
+        xlnt_assert_equals(xlnt::uri("/../g").make_absolute(base_empty).to_string(), "/g");
+        xlnt_assert_equals(xlnt::uri("/..").make_absolute(base_empty).to_string(), "/");
+
+
+        xlnt_assert_equals(xlnt::uri("child").make_absolute(xlnt::uri("http://example.com")).to_string(), "http://example.com/child");
+        xlnt_assert_equals(xlnt::uri("child").make_absolute(xlnt::uri("urn:base")).to_string(), "urn:child");
+
+        xlnt::uri ref1 = xlnt::uri("http://example.com/a").make_reference(xlnt::uri("http://example.com"));
+        xlnt_assert_equals(ref1.to_string(), "a");
+
+        xlnt::uri ref2 = xlnt::uri("urn:target").make_reference(xlnt::uri("urn:base"));
+        xlnt_assert_equals(ref2.to_string(), "target");
     }
 };
 
