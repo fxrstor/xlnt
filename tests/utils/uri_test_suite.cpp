@@ -32,6 +32,7 @@ public:
     uri_test_suite()
     {
         register_test(test_default_ctor);
+        register_test(test_make_absolute_path_overload);
         register_test(test_parse_relative_path);
         register_test(test_parse_absolute_basic);
         register_test(test_parse_with_auth_query_fragment);
@@ -52,6 +53,10 @@ public:
         register_test(test_make_reference_different_authority);
         register_test(test_make_reference_same_uri);
         register_test(test_rfc3986_resolution_examples);
+        register_test(test_make_reference_relative_passthrough);
+        register_test(test_make_absolute_relative_passthrough);
+        register_test(test_parse_invalid_port_empty);
+        register_test(test_parse_invalid_port_nondigit);
     }
 
     void test_default_ctor()
@@ -75,6 +80,16 @@ public:
         xlnt_assert(!u.has_fragment());
         xlnt_assert_equals(u.fragment(), "");
         xlnt_assert_equals(u.to_string(), "");
+        xlnt_assert(!u.has_authority());
+    }
+
+    void test_make_absolute_path_overload()
+    {
+        xlnt::uri base("http://example.com/dir/index.html");
+        xlnt::uri u(base, xlnt::path("child.txt"));
+
+        xlnt_assert(u.is_absolute());
+        xlnt_assert_equals(u.to_string(), "http://example.com/dir/child.txt");
     }
 
     void test_parse_relative_path()
@@ -88,6 +103,7 @@ public:
         xlnt_assert_equals(u.to_string(), "folder/file.txt");
         xlnt_assert(!u.has_query());
         xlnt_assert(!u.has_fragment());
+        xlnt_assert(!u.has_authority());
     }
 
     void test_parse_absolute_basic()
@@ -102,6 +118,7 @@ public:
         xlnt_assert(!u.has_port());
         xlnt_assert_equals(u.path().string(), "/document");
         xlnt_assert_equals(u.to_string(), "http://example.com/document");
+        xlnt_assert(u.has_authority());
     }
 
     void test_parse_with_auth_query_fragment()
@@ -124,6 +141,7 @@ public:
         xlnt_assert(u.has_fragment());
         xlnt_assert_equals(u.fragment(), "abc");
         xlnt_assert_equals(u.to_string(), "http://user:pass@example.com:80/document?v=1&x=3#abc");
+        xlnt_assert(u.has_authority());
     }
 
     void test_parse_ipv6_host()
@@ -141,12 +159,18 @@ public:
 
     void test_parse_empty_query_and_fragment()
     {
+        xlnt::uri plain("http://example.com/document");
+        xlnt_assert(!plain.has_query());
+        xlnt_assert(!plain.has_fragment());
+
         xlnt::uri u1("http://example.com/document?");
         xlnt_assert(u1.has_query());
+        xlnt_assert(!u1.has_fragment());
         xlnt_assert_equals(u1.query(), "");
         xlnt_assert_equals(u1.to_string(), "http://example.com/document?");
 
         xlnt::uri u2("http://example.com/document#");
+        xlnt_assert(!u2.has_query());
         xlnt_assert(u2.has_fragment());
         xlnt_assert_equals(u2.fragment(), "");
         xlnt_assert_equals(u2.to_string(), "http://example.com/document#");
@@ -182,6 +206,7 @@ public:
         xlnt_assert_equals(u.host(), "example.com");
         xlnt_assert_equals(u.path().string(), "/path");
         xlnt_assert_equals(u.to_string(), "//example.com/path");
+        xlnt_assert(u.has_authority());
     }
 
     void test_parse_empty_authority_file_uri()
@@ -194,6 +219,7 @@ public:
         xlnt_assert_equals(u.host(), "");
         xlnt_assert_equals(u.path().string(), "/tmp/test.txt");
         xlnt_assert_equals(u.to_string(), "file:///tmp/test.txt");
+        xlnt_assert(u.has_authority());
     }
 
     void test_parse_query_only()
@@ -368,6 +394,51 @@ public:
             xlnt::uri resolved = relative.make_absolute(base);
             xlnt_assert_equals(resolved.to_string(), std::string(test.expected));
         }
+    }
+
+    void test_make_reference_relative_passthrough()
+    {
+        xlnt::uri base("http://example.com/a/b/");
+        xlnt::uri rel("c/d.txt");
+
+        xlnt::uri ref = rel.make_reference(base);
+
+        xlnt_assert(ref.is_relative());
+        xlnt_assert_equals(ref.to_string(), "c/d.txt");
+    }
+
+    void test_make_absolute_relative_passthrough()
+    {
+        xlnt::uri base("http://example.com/a/b/");
+        xlnt::uri absolute_relative("https://other.example.com/x?y=1#f");
+
+        xlnt::uri resolved(base, absolute_relative);
+
+        xlnt_assert(resolved.is_absolute());
+        xlnt_assert_equals(resolved.to_string(), absolute_relative.to_string());
+        xlnt_assert(resolved == absolute_relative);
+    }
+
+    void test_parse_invalid_port_empty()
+    {
+        xlnt::uri u("http://example.com:/path");
+
+        xlnt_assert(u.is_absolute());
+        xlnt_assert(u.has_authority());
+        xlnt_assert(!u.has_port());
+        xlnt_assert_equals(u.host(), "example.com:");
+        xlnt_assert_equals(u.to_string(), "http://example.com:/path");
+    }
+
+    void test_parse_invalid_port_nondigit()
+    {
+        xlnt::uri u("http://example.com:abc/path");
+
+        xlnt_assert(u.is_absolute());
+        xlnt_assert(u.has_authority());
+        xlnt_assert(!u.has_port());
+        xlnt_assert_equals(u.host(), "example.com:abc");
+        xlnt_assert_equals(u.to_string(), "http://example.com:abc/path");
     }
 };
 

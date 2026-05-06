@@ -118,6 +118,7 @@ struct parsed_authority
     std::string password;
     std::string host;
     std::size_t port = 0;
+    bool ipv6 = false;
 };
 
 parsed_authority parse_authority(const std::string &authority)
@@ -153,6 +154,7 @@ parsed_authority parse_authority(const std::string &authority)
 
     if (!hostport.empty() && hostport.front() == '[')
     {
+        result.ipv6 = true;
         const std::size_t close = hostport.find(']');
         if (close != std::string::npos)
         {
@@ -283,6 +285,7 @@ struct parsed_uri
     bool has_port = false;
     bool has_query = false;
     bool has_fragment = false;
+    bool ipv6 = false;
 
     std::string scheme;
     std::string username;
@@ -345,6 +348,7 @@ parsed_uri parse_uri_string(const std::string &uri_string)
         rest = (authority_end == std::string::npos) ? std::string() : rest.substr(authority_end);
 
         const parsed_authority auth = parse_authority(authority);
+        parsed.ipv6 = auth.ipv6;
         parsed.has_authentication = auth.authentication;
         parsed.has_port = auth.port_present;
         parsed.username = auth.username;
@@ -461,6 +465,7 @@ uri::uri(const std::string &uri_string)
 
     absolute_ = parsed.absolute;
     has_authority_ = parsed.has_authority;
+    ipv6_ = parsed.ipv6;
     has_authentication_ = parsed.has_authentication;
     has_port_ = parsed.has_port;
     has_query_ = parsed.has_query;
@@ -549,6 +554,7 @@ uri::uri(const uri &base, const uri &relative)
         query_ = relative.query_;
     }
 
+    ipv6_ = has_authority_ ? (relative.has_authority_ ? relative.ipv6_ : base.ipv6_) : false;
     has_fragment_ = relative.has_fragment_;
     fragment_ = relative.fragment_;
 }
@@ -559,6 +565,7 @@ uri::uri(const uri &base, const xlnt::path &relative)
     ref.absolute_ = false;
     ref.has_authority_ = false;
     ref.path_ = relative;
+    ref.ipv6_ = base.ipv6_;
 
     *this = uri(base, ref);
 }
@@ -598,7 +605,14 @@ std::string uri::authority() const
         result += '@';
     }
 
-    result += bracket_ipv6_if_needed(host_);
+    if (ipv6_)
+    {
+        result += '[' + host_ + ']';
+    }
+    else
+    {
+        result += host_;
+    }
 
     if (has_port_)
     {

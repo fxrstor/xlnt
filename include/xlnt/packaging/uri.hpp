@@ -193,6 +193,11 @@ private:
     bool has_authority_ = false;
 
     /// <summary>
+    /// True if the host is an IPv6 address and needs bracket wrapping in authority().
+    /// </summary>
+    bool ipv6_ = false;
+
+    /// <summary>
     /// True if this URI has an authentication section.
     /// </summary>
     bool has_authentication_ = false;
